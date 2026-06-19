@@ -16,7 +16,8 @@
 
 ### 방법 2 — GitHub Pages
 
-```
+```python
+# https://ahyun39.github.io/Daily_TODO/todo.html
 https://[username].github.io/Daily_TODO/todo.html
 ```
 
