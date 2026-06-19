@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self'; font-src 'self';">
+<meta name="referrer" content="no-referrer">
+<title>🗒️ 오늘 할 일을 내일로 미루지 말자</title>
+<style>
+/* =============================================
+   색상 변수 — 여기만 수정하면 전체 색상 변경
+   ============================================= */
+:root {
+  --bg:    #F8F5F0;  /* 전체 배경 (종이)       */
+  --panel: #EEE8DF;  /* 캘린더 패널 (노트 탭)  */
+  --dark:  #3D3830;  /* 잉크 (텍스트·강조)     */
+  --mid:   #C4BAB0;  /* 연필선 (테두리·보조)   */
+}
+/* 파생 색상 (자동 계산 — 수정 불필요) */
+:root {
+  --mid-hover: color-mix(in srgb, var(--mid) 40%, white);
+  --mid-deep:  color-mix(in srgb, var(--mid) 80%, black 10%);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Georgia', 'Times New Roman', serif; background: var(--bg); height: 100vh; display: flex; flex-direction: column; }
+
+/* Header */
+header { padding: 0 28px; height: 50px; background: var(--bg); border-bottom: 1px solid var(--mid); display: flex; justify-content: space-between; align-items: center; }
+header h1 { font-size: 14px; font-weight: normal; color: var(--dark); letter-spacing: 1.5px; text-transform: uppercase; }
+.btn { padding: 5px 14px; border: 1px solid var(--mid); background: transparent; border-radius: 3px; cursor: pointer; font-size: 12px; font-family: inherit; color: var(--dark); transition: background .12s; }
+.btn:hover { background: var(--mid-hover); }
+.btn-primary { background: var(--dark); color: var(--bg); border-color: var(--dark); }
+.btn-primary:hover { background: color-mix(in srgb, var(--dark) 80%, transparent); }
+
+main { display: flex; flex: 1; overflow: hidden; }
+
+/* Calendar panel */
+.cal-panel { width: 300px; padding: 24px 20px 20px; background: var(--panel); border-right: 1px solid var(--mid); flex-shrink: 0; display: flex; flex-direction: column; overflow-y: auto; }
+
+.cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.cal-header-labels { display: flex; gap: 4px; align-items: center; }
+.cal-header-label { font-size: 13px; font-weight: normal; color: var(--dark); padding: 2px 6px; border-radius: 2px; cursor: pointer; user-select: none; font-family: inherit; transition: background .12s; }
+.cal-header-label:hover { background: var(--mid-hover); }
+.cal-header-label.active { background: var(--mid); }
+.cal-nav { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--mid); width: 24px; line-height: 1; transition: color .12s; }
+.cal-nav:hover { color: var(--dark); }
+
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+.cal-label { text-align: center; font-size: 10px; color: var(--dark); opacity: 0.4; padding: 2px 0 10px; letter-spacing: 0.5px; }
+.cal-day { position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--dark); }
+.cal-day span { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 12px; z-index: 1; transition: background .12s; font-family: inherit; }
+.cal-day:hover:not(.today):not(.selected) span { background: var(--mid-hover); }
+.cal-day.other-month { color: var(--mid); }
+.cal-day.today span { background: var(--dark); color: var(--bg); font-weight: bold; }
+.cal-day.selected:not(.today) span { background: var(--mid); color: var(--dark); }
+.cal-icon { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; z-index: 2; }
+.cal-day.today .cal-icon, .cal-day.selected .cal-icon { opacity: 0.3; }
+
+.cal-picker { display: none; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-top: 4px; }
+.cal-pick-item { text-align: center; padding: 9px 4px; border-radius: 2px; cursor: pointer; font-size: 12px; font-family: inherit; color: var(--dark); transition: background .12s; }
+.cal-pick-item:hover { background: var(--mid-hover); }
+.cal-pick-item.active { background: var(--dark); color: var(--bg); }
+.cal-pick-item.this-year { border: 1px solid var(--mid); }
+
+/* Sidebar routines */
+.cal-routine-section { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--mid); }
+.cal-routine-label { font-size: 10px; color: var(--dark); letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 10px; }
+.cal-routine-item { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--mid-hover); background: none; }
+.cal-routine-item input[type=checkbox] { width: 13px; height: 13px; cursor: pointer; accent-color: var(--dark); flex-shrink: 0; }
+.cal-routine-item label { flex: 1; font-size: 12px; cursor: pointer; color: var(--dark); line-height: 1.4; font-family: inherit; }
+.cal-routine-item.done label { text-decoration: line-through; opacity: 0.4; }
+
+/* Todo panel */
+.content-area { flex: 1; overflow: hidden; display: flex; }
+#main-view { flex: 1; padding: 32px 40px; overflow-y: auto; }
+.todo-date { font-size: 20px; font-weight: normal; color: var(--dark); margin-bottom: 4px; letter-spacing: 0.2px; }
+.todo-progress { font-size: 11px; color: var(--dark); opacity: 0.45; margin-bottom: 28px; letter-spacing: 0.5px; }
+.add-row { display: flex; gap: 8px; margin-bottom: 28px; border-bottom: 1px solid var(--mid); padding-bottom: 20px; }
+.add-row input { flex: 1; padding: 8px 0; border: none; border-bottom: 1px solid var(--mid); background: transparent; font-size: 14px; font-family: inherit; color: var(--dark); transition: border-color .15s; }
+.add-row input::placeholder { color: var(--dark); opacity: 0.3; }
+.add-row input:focus { outline: none; border-bottom-color: var(--dark); }
+.section-label { font-size: 10px; color: var(--dark); opacity: 0.4; text-transform: uppercase; letter-spacing: 1.2px; margin: 24px 0 10px; }
+.todo-item { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--mid-hover); }
+.todo-item input[type=checkbox] { width: 14px; height: 14px; cursor: pointer; accent-color: var(--dark); flex-shrink: 0; }
+.todo-item label { flex: 1; font-size: 14px; cursor: pointer; color: var(--dark); line-height: 1.5; font-family: inherit; }
+.todo-item.done { opacity: 0.45; }
+.todo-item.done label { text-decoration: line-through; }
+.todo-item .del { background: none; border: none; cursor: pointer; color: var(--mid); font-size: 16px; line-height: 1; padding: 0 2px; transition: color .12s; }
+.todo-item .del:hover { color: var(--dark); }
+
+/* Routine management view */
+#routine-view { display: none; flex: 1; padding: 32px 40px; overflow-y: auto; }
+#routine-view h2 { font-size: 20px; font-weight: normal; color: var(--dark); margin-bottom: 6px; letter-spacing: 0.2px; }
+#routine-view p { font-size: 12px; color: var(--dark); opacity: 0.45; margin-bottom: 28px; line-height: 1.7; }
+.routine-item { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--mid-hover); font-size: 14px; font-family: inherit; color: var(--dark); }
+.routine-item .del { background: none; border: none; cursor: pointer; color: var(--mid); font-size: 16px; transition: color .12s; }
+.routine-item .del:hover { color: var(--dark); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="header-title">오늘의 할 일</h1>
+  <div style="display:flex;gap:8px;">
+    <button class="btn" id="routine-btn" onclick="showRoutines()">루틴 관리</button>
+    <button class="btn" id="back-btn" onclick="showMain()" style="display:none">← 돌아가기</button>
+
+  </div>
+</header>
+
+<main>
+  <div class="cal-panel">
+    <div class="cal-header">
+      <button class="cal-nav" onclick="calPrev()">‹</button>
+      <div class="cal-header-labels">
+        <span class="cal-header-label" id="cal-year-label" onclick="togglePicker('year')"></span>
+        <span class="cal-header-label" id="cal-month-label" onclick="togglePicker('month')"></span>
+      </div>
+      <button class="cal-nav" onclick="calNext()">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-picker" id="cal-picker"></div>
+    <div class="cal-routine-section" id="cal-routine-section" style="display:none"></div>
+  </div>
+
+  <div class="content-area">
+    <div id="main-view">
+      <div class="todo-date" id="todo-date"></div>
+      <div class="todo-progress" id="todo-progress"></div>
+      <div class="add-row">
+        <input type="text" id="todo-input" placeholder="할 일 추가..." onkeydown="if(event.key==='Enter'&&!event.isComposing)addTodo()">
+        <button class="btn btn-primary" onclick="addTodo()">추가</button>
+      </div>
+      <div id="todo-list"></div>
+    </div>
+
+    <div id="routine-view">
+      <h2>루틴 할 일 관리</h2>
+      <p>여기에 추가한 항목은 매일 처음 열 때 자동으로 할 일 목록에 추가됩니다.</p>
+      <div class="add-row">
+        <input type="text" id="routine-input" placeholder="루틴 할 일 추가..." onkeydown="if(event.key==='Enter'&&!event.isComposing)addRoutine()">
+        <button class="btn btn-primary" onclick="addRoutine()">추가</button>
+      </div>
+      <div id="routine-list"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── 이미지 경로 설정 ──────────────────────────────────────
+// 진행률 30% 이하 (이미지 3개 중 랜덤)
+const IMG_LOW  = ['images/low_1.png',  'images/low_2.png',  'images/low_3.png'];
+// 진행률 30% 초과 ~ 70% 이하
+const IMG_MID  = ['images/mid_1.png',  'images/mid_2.png',  'images/mid_3.png'];
+// 진행률 70% 초과
+const IMG_HIGH = ['images/high_1.png', 'images/high_2.png', 'images/high_3.png', 'images/high_4.png'];
+// ─────────────────────────────────────────────────────────
+
+function tierImage(dateStr, todos) {
+  if (!todos?.length) return null;
+  const pct = todos.filter(t => t.done).length / todos.length * 100;
+  const pool = pct <= 30 ? IMG_LOW : pct <= 70 ? IMG_MID : IMG_HIGH;
+  // 날짜 기반 결정적 선택 (같은 날짜는 항상 같은 이미지)
+  const idx = dateStr.replace(/-/g, '').split('').reduce((a, c) => a + +c, 0) % pool.length;
+  return pool[idx];
+}
+
+const pad = n => String(n).padStart(2, '0');
+const dateStr = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const TODAY = dateStr(new Date());
+
+let selectedDate = TODAY;
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let calMode = 'day'; // 'day' | 'month' | 'year'
+let calYearBase = Math.floor(new Date().getFullYear() / 16) * 16;
+
+const NS = 'paper-todo:';
+const load = (k, def) => { try { return JSON.parse(localStorage.getItem(NS + k)) ?? def; } catch { return def; } };
+const save = (k, v) => localStorage.setItem(NS + k, JSON.stringify(v));
+
+function getTodos(date) {
+  const all = load('todos', {});
+  if (!all[date]) {
+    all[date] = load('routines', [])
+      .filter(r => (r.createdAt ?? '0000-00-00') <= date)
+      .map(r => ({ text: r.text ?? r, done: false, routine: true }));
+    save('todos', all);
+  }
+  return all[date];
+}
+
+function saveTodos(date, todos) {
+  const all = load('todos', {});
+  all[date] = todos;
+  save('todos', all);
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function renderTodos() {
+  const todos = getTodos(selectedDate);
+  const d = new Date(selectedDate + 'T00:00:00');
+  document.getElementById('todo-date').textContent =
+    d.toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
+
+  const done = todos.filter(t => t.done).length;
+  const total = todos.length;
+  document.getElementById('todo-progress').textContent =
+    total ? `${done} / ${total} 완료 · ${Math.round(done/total*100)}%` : '';
+
+  let routineHtml = '', customHtml = '';
+  todos.forEach((t, i) => {
+    if (t.routine) {
+      routineHtml += `<div class="cal-routine-item${t.done?' done':''}">
+        <input type="checkbox" id="c${i}" ${t.done?'checked':''} onchange="toggle(${i})">
+        <label for="c${i}">${esc(t.text)}</label>
+      </div>`;
+    } else {
+      customHtml += `<div class="todo-item${t.done?' done':''}">
+        <input type="checkbox" id="c${i}" ${t.done?'checked':''} onchange="toggle(${i})">
+        <label for="c${i}">${esc(t.text)}</label>
+        <button class="del" onclick="del(${i})">×</button>
+      </div>`;
+    }
+  });
+
+  const routineSection = document.getElementById('cal-routine-section');
+  if (routineHtml) {
+    routineSection.style.display = '';
+    routineSection.innerHTML = `<div class="cal-routine-label">📌 루틴</div>${routineHtml}`;
+  } else {
+    routineSection.style.display = 'none';
+  }
+
+  document.getElementById('todo-list').innerHTML = customHtml;
+  renderCal();
+}
+
+function addTodo() {
+  const inp = document.getElementById('todo-input');
+  const text = inp.value.trim();
+  if (!text) return;
+  const todos = getTodos(selectedDate);
+  todos.push({ text, done: false, routine: false });
+  saveTodos(selectedDate, todos);
+  inp.value = '';
+  renderTodos();
+}
+
+function toggle(i) {
+  const todos = getTodos(selectedDate);
+  todos[i].done = !todos[i].done;
+  saveTodos(selectedDate, todos);
+  renderTodos();
+}
+
+function del(i) {
+  const todos = getTodos(selectedDate);
+  todos.splice(i, 1);
+  saveTodos(selectedDate, todos);
+  renderTodos();
+}
+
+function renderRoutines() {
+  const routines = load('routines', []);
+  document.getElementById('routine-list').innerHTML = routines.map((r, i) =>
+    `<div class="routine-item"><span>${esc(r.text ?? r)}</span><button class="del" onclick="delRoutine(${i})">×</button></div>`
+  ).join('') || '<p style="color:#9ca3af;font-size:13px;">아직 루틴이 없습니다.</p>';
+}
+
+function addRoutine() {
+  const inp = document.getElementById('routine-input');
+  const text = inp.value.trim();
+  if (!text) return;
+  const routines = load('routines', []);
+  routines.push({ text, createdAt: TODAY });
+  save('routines', routines);
+  const todayTodos = getTodos(TODAY);
+  todayTodos.push({ text, done: false, routine: true });
+  saveTodos(TODAY, todayTodos);
+  inp.value = '';
+  renderRoutines();
+}
+
+function delRoutine(i) {
+  const routines = load('routines', []);
+  const deletedText = routines[i].text ?? routines[i];
+  routines.splice(i, 1);
+  save('routines', routines);
+  const all = load('todos', {});
+  for (const date in all) {
+    all[date] = all[date].filter(t => !(t.routine && t.text === deletedText));
+  }
+  save('todos', all);
+  renderRoutines();
+  renderTodos();
+}
+
+function showRoutines() {
+  document.getElementById('main-view').style.display = 'none';
+  document.getElementById('routine-view').style.display = 'block';
+  document.getElementById('routine-btn').style.display = 'none';
+  document.getElementById('back-btn').style.display = '';
+  document.getElementById('header-title').textContent = '루틴 관리';
+  renderRoutines();
+}
+
+function showMain() {
+  document.getElementById('main-view').style.display = '';
+  document.getElementById('routine-view').style.display = 'none';
+  document.getElementById('routine-btn').style.display = '';
+  document.getElementById('back-btn').style.display = 'none';
+  document.getElementById('header-title').textContent = '오늘의 할 일';
+  renderTodos();
+}
+
+function renderCal() {
+  const MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const thisYear = new Date().getFullYear();
+
+  document.getElementById('cal-year-label').textContent = `${calYear}년`;
+  document.getElementById('cal-month-label').textContent = MONTHS[calMonth];
+  document.getElementById('cal-year-label').classList.toggle('active', calMode === 'year');
+  document.getElementById('cal-month-label').classList.toggle('active', calMode === 'month');
+
+  const grid = document.getElementById('cal-grid');
+  const picker = document.getElementById('cal-picker');
+
+  if (calMode === 'month') {
+    grid.style.display = 'none';
+    picker.style.display = 'grid';
+    picker.innerHTML = MONTHS.map((m, i) =>
+      `<div class="cal-pick-item${i === calMonth ? ' active' : ''}" onclick="selectMonth(${i})">${m}</div>`
+    ).join('');
+    return;
+  }
+
+  if (calMode === 'year') {
+    grid.style.display = 'none';
+    picker.style.display = 'grid';
+    let html = '';
+    for (let y = calYearBase; y < calYearBase + 16; y++) {
+      let cls = 'cal-pick-item';
+      if (y === calYear) cls += ' active';
+      else if (y === thisYear) cls += ' this-year';
+      html += `<div class="${cls}" onclick="selectYear(${y})">${y}</div>`;
+    }
+    picker.innerHTML = html;
+    return;
+  }
+
+  grid.style.display = 'grid';
+  picker.style.display = 'none';
+
+  const all = load('todos', {});
+  const first = new Date(calYear, calMonth, 1);
+  const startDay = first.getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const daysInPrev = new Date(calYear, calMonth, 0).getDate();
+
+  let html = ['일','월','화','수','목','금','토'].map(d => `<div class="cal-label">${d}</div>`).join('');
+  for (let i = startDay - 1; i >= 0; i--)
+    html += `<div class="cal-day other-month"><span>${daysInPrev - i}</span></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${calYear}-${pad(calMonth+1)}-${pad(d)}`;
+    let cls = 'cal-day';
+    if (ds === TODAY) cls += ' today';
+    else if (ds === selectedDate) cls += ' selected';
+    const img = tierImage(ds, all[ds]);
+    const icon = img ? `<img class="cal-icon" src="${img}">` : '';
+    html += `<div class="${cls}" onclick="selectDate('${ds}')"><span>${d}</span>${icon}</div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function togglePicker(mode) {
+  if (calMode === mode) { calMode = 'day'; }
+  else {
+    calMode = mode;
+    if (mode === 'year') calYearBase = Math.floor(calYear / 16) * 16;
+  }
+  renderCal();
+}
+
+function selectMonth(m) { calMonth = m; calMode = 'day'; renderCal(); }
+function selectYear(y) { calYear = y; calMode = 'month'; renderCal(); }
+
+function selectDate(d) {
+  selectedDate = d;
+  calYear = +d.slice(0,4);
+  calMonth = +d.slice(5,7) - 1;
+  calMode = 'day';
+  showMain();
+  renderTodos();
+}
+
+function calPrev() {
+  if (calMode === 'year') { calYearBase -= 16; renderCal(); return; }
+  if (calMode === 'month') { calYear--; renderCal(); return; }
+  if (--calMonth < 0) { calMonth = 11; calYear--; }
+  renderCal();
+}
+function calNext() {
+  if (calMode === 'year') { calYearBase += 16; renderCal(); return; }
+  if (calMode === 'month') { calYear++; renderCal(); return; }
+  if (++calMonth > 11) { calMonth = 0; calYear++; }
+  renderCal();
+}
+
+// 기존 키(네임스페이스 없는) 데이터 한 번만 마이그레이션
+if (!localStorage.getItem(NS + 'migrated')) {
+  ['todos', 'routines'].forEach(k => {
+    const old = localStorage.getItem(k);
+    if (old && !localStorage.getItem(NS + k)) localStorage.setItem(NS + k, old);
+  });
+  localStorage.setItem(NS + 'migrated', '1');
+}
+
+renderTodos();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# 빌드 결과물
+todo-standalone.html
+
+# 개발용 파일
+build.py
+develop_readme.md
+
+# macOS 자동 실행 (개인 경로 포함, 실제 사용 파일만 제외)
+com.user.todo.plist
+!com.user.todo.plist.template
+
+# macOS 시스템 파일
+.DS_Store
