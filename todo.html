@@ -67,7 +67,7 @@ main { display: flex; flex: 1; overflow: hidden; }
 .cal-routine-label { font-size: 10px; color: var(--dark); letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 10px; }
 .cal-routine-item { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--mid-hover); background: none; }
 .cal-routine-item input[type=checkbox] { width: 13px; height: 13px; cursor: pointer; accent-color: var(--dark); flex-shrink: 0; }
-.cal-routine-item label { flex: 1; font-size: 12px; cursor: pointer; color: var(--dark); line-height: 1.4; font-family: inherit; }
+.cal-routine-item label { flex: 1; font-size: 16px; cursor: pointer; color: var(--dark); line-height: 1.4; font-family: inherit; }
 .cal-routine-item.done label { text-decoration: line-through; opacity: 0.4; }
 
 /* Todo panel */
@@ -92,9 +92,15 @@ main { display: flex; flex: 1; overflow: hidden; }
 #routine-view { display: none; flex: 1; padding: 32px 40px; overflow-y: auto; }
 #routine-view h2 { font-size: 20px; font-weight: normal; color: var(--dark); margin-bottom: 6px; letter-spacing: 0.2px; }
 #routine-view p { font-size: 12px; color: var(--dark); opacity: 0.45; margin-bottom: 28px; line-height: 1.7; }
-.routine-item { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--mid-hover); font-size: 14px; font-family: inherit; color: var(--dark); }
+.routine-item { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--mid-hover); font-size: 15px; font-family: inherit; color: var(--dark); }
 .routine-item .del { background: none; border: none; cursor: pointer; color: var(--mid); font-size: 16px; transition: color .12s; }
 .routine-item .del:hover { color: var(--dark); }
+.routine-badge { font-size: 10px; color: var(--dark); opacity: 0.45; margin-top: 2px; }
+.routine-form-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--dark); flex-wrap: wrap; }
+.routine-form-label { opacity: 0.6; min-width: 52px; }
+.routine-select { border: 1px solid var(--mid); background: transparent; font-size: 12px; font-family: inherit; color: var(--dark); padding: 3px 6px; border-radius: 2px; cursor: pointer; }
+.routine-day-label { display: flex; align-items: center; gap: 3px; cursor: pointer; }
+.routine-day-num { width: 46px; border: 1px solid var(--mid); background: transparent; font-size: 12px; font-family: inherit; color: var(--dark); padding: 3px 4px; border-radius: 2px; }
 </style>
 </head>
 <body>
@@ -102,6 +108,7 @@ main { display: flex; flex: 1; overflow: hidden; }
 <header>
   <h1 id="header-title">오늘의 할 일</h1>
   <div style="display:flex;gap:8px;">
+    <button class="btn" id="today-btn" onclick="goToday()">오늘</button>
     <button class="btn" id="routine-btn" onclick="showRoutines()">루틴 관리</button>
     <button class="btn" id="back-btn" onclick="showMain()" style="display:none">← 돌아가기</button>
 
@@ -136,10 +143,64 @@ main { display: flex; flex: 1; overflow: hidden; }
 
     <div id="routine-view">
       <h2>루틴 할 일 관리</h2>
-      <p>여기에 추가한 항목은 매일 처음 열 때 자동으로 할 일 목록에 추가됩니다.</p>
-      <div class="add-row">
-        <input type="text" id="routine-input" placeholder="루틴 할 일 추가..." onkeydown="if(event.key==='Enter'&&!event.isComposing)addRoutine()">
-        <button class="btn btn-primary" onclick="addRoutine()">추가</button>
+      <p>반복 주기를 설정하면 해당 날짜에 자동으로 할 일 목록에 추가됩니다.</p>
+      <div class="add-row" style="flex-direction:column;align-items:stretch;gap:10px;">
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="routine-input" placeholder="루틴 할 일 추가..." onkeydown="if(event.key==='Enter'&&!event.isComposing)addRoutine()">
+          <button class="btn btn-primary" onclick="addRoutine()">추가</button>
+        </div>
+        <div class="routine-form-row">
+          <span class="routine-form-label">반복 주기</span>
+          <select id="routine-repeat" class="routine-select" onchange="updateRepeatUI()">
+            <option value="daily">매일</option>
+            <option value="weekly">매주</option>
+            <option value="monthly">매월</option>
+            <option value="yearly">매년</option>
+          </select>
+          <div id="repeat-weekly" style="display:none;gap:8px;flex-wrap:wrap;align-items:center;">
+            <label class="routine-day-label"><input type="checkbox" class="repeat-day-cb" value="0"> 일</label>
+            <label class="routine-day-label"><input type="checkbox" class="repeat-day-cb" value="1"> 월</label>
+            <label class="routine-day-label"><input type="checkbox" class="repeat-day-cb" value="2"> 화</label>
+            <label class="routine-day-label"><input type="checkbox" class="repeat-day-cb" value="3"> 수</label>
+            <label class="routine-day-label"><input type="checkbox" class="repeat-day-cb" value="4"> 목</label>
+            <label class="routine-day-label"><input type="checkbox" class="repeat-day-cb" value="5"> 금</label>
+            <label class="routine-day-label"><input type="checkbox" class="repeat-day-cb" value="6"> 토</label>
+            <button type="button" class="btn" style="padding:2px 8px;font-size:11px;" onclick="document.querySelectorAll('.repeat-day-cb').forEach(cb=>cb.checked=false)">초기화</button>
+          </div>
+          <div id="repeat-monthly" style="display:none;">
+            매월 <input type="number" id="routine-day" class="routine-day-num" min="1" max="31" value="1"> 일
+          </div>
+          <div id="repeat-yearly" style="display:none;">
+            매년 <select id="routine-year-month" class="routine-select">
+              <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
+              <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
+              <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
+              <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+            </select>
+            <input type="number" id="routine-year-day" class="routine-day-num" min="1" max="31" value="1"> 일
+          </div>
+        </div>
+        <div class="routine-form-row">
+          <span class="routine-form-label">종료 조건</span>
+          <select id="routine-end-type" class="routine-select" onchange="updateEndUI()">
+            <option value="none">없음</option>
+            <option value="count">횟수</option>
+            <option value="date">날짜</option>
+          </select>
+          <div id="end-count" style="display:none;">
+            <input type="number" id="routine-end-count" class="routine-day-num" min="1" value="10" style="width:52px;"> 회
+          </div>
+          <div id="end-date" style="display:none;">
+            <input type="date" id="routine-end-date" class="routine-select">
+          </div>
+        </div>
+        <div class="routine-form-row">
+          <span class="routine-form-label">시작 시점</span>
+          <select id="routine-start" class="routine-select">
+            <option value="this_month">이번 달부터</option>
+            <option value="all_past">전체 기간 (이전 날짜 포함)</option>
+          </select>
+        </div>
       </div>
       <div id="routine-list"></div>
     </div>
@@ -179,11 +240,90 @@ const NS = 'paper-todo:';
 const load = (k, def) => { try { return JSON.parse(localStorage.getItem(NS + k)) ?? def; } catch { return def; } };
 const save = (k, v) => localStorage.setItem(NS + k, JSON.stringify(v));
 
+// 생성일 기준 "주기 수"를 셈 — 매주는 주 단위, 매월은 월 단위, 매년은 년 단위
+function cycleCount(r, toDate) {
+  const created = r.createdAt ?? '0000-00-00';
+  if (created > toDate) return 0;
+  const from = new Date(created + 'T00:00:00');
+  const to = new Date(toDate + 'T00:00:00');
+  if (!r.repeat || r.repeat === 'daily') {
+    return Math.floor((to - from) / 86400000) + 1;
+  }
+  if (r.repeat === 'weekly') {
+    const days = r.days ?? [];
+    if (!days.length) return 0;
+    // 생성일 이후 처음 등장하는 선택 요일의 주(週)를 기준으로 몇 번째 주인지 셈
+    const weeks = new Set();
+    let cur = new Date(from);
+    while (cur <= to) {
+      if (days.includes(cur.getDay())) {
+        const sun = new Date(cur);
+        sun.setDate(cur.getDate() - cur.getDay()); // 해당 주의 일요일
+        weeks.add(sun.toISOString().slice(0, 10));
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+    return weeks.size;
+  }
+  if (r.repeat === 'monthly') {
+    const day = r.day ?? 1;
+    let count = 0, cur = new Date(from.getFullYear(), from.getMonth(), 1);
+    while (cur <= to) {
+      const occ = new Date(cur.getFullYear(), cur.getMonth(), day);
+      if (occ >= from && occ <= to) count++;
+      cur.setMonth(cur.getMonth() + 1);
+    }
+    return count;
+  }
+  if (r.repeat === 'yearly') {
+    const mo = (r.yearMonth ?? 1) - 1, day = r.yearDay ?? 1;
+    let count = 0;
+    for (let y = from.getFullYear(); y <= to.getFullYear(); y++) {
+      const occ = new Date(y, mo, day);
+      if (occ >= from && occ <= to) count++;
+    }
+    return count;
+  }
+  return 0;
+}
+
+function routineApplies(r, date) {
+  const created = r.createdAt ?? '0000-00-00';
+  if (r.startFrom === 'all_past') {
+    // no date restriction
+  } else if (r.startFrom === 'this_month') {
+    if (date < created) return false;
+  } else {
+    if (created > date) return false; // legacy behavior
+  }
+  const d = new Date(date + 'T00:00:00');
+  let matches = false;
+  if (!r.repeat || r.repeat === 'daily') matches = true;
+  else if (r.repeat === 'weekly') matches = (r.days ?? []).includes(d.getDay());
+  else if (r.repeat === 'monthly') matches = d.getDate() === (r.day ?? 1);
+  else if (r.repeat === 'yearly') matches = d.getMonth() + 1 === (r.yearMonth ?? 1) && d.getDate() === (r.yearDay ?? 1);
+  if (!matches) return false;
+  if (r.endType === 'date' && r.endDate && date > r.endDate) return false;
+  if (r.endType === 'count' && r.endCount) {
+    if (cycleCount(r, date) > r.endCount) return false;
+  }
+  return true;
+}
+
+function repeatLabel(r) {
+  const DAYS = ['일','월','화','수','목','금','토'];
+  if (!r.repeat || r.repeat === 'daily') return '매일';
+  if (r.repeat === 'weekly') return '매주 ' + (r.days ?? []).map(d => DAYS[d]).join('·');
+  if (r.repeat === 'monthly') return `매월 ${r.day}일`;
+  if (r.repeat === 'yearly') return `매년 ${r.yearMonth}월 ${r.yearDay}일`;
+  return '';
+}
+
 function getTodos(date) {
   const all = load('todos', {});
   if (!all[date]) {
     all[date] = load('routines', [])
-      .filter(r => (r.createdAt ?? '0000-00-00') <= date)
+      .filter(r => routineApplies(r, date))
       .map(r => ({ text: r.text ?? r, done: false, routine: true }));
     save('todos', all);
   }
@@ -264,23 +404,67 @@ function del(i) {
 
 function renderRoutines() {
   const routines = load('routines', []);
-  document.getElementById('routine-list').innerHTML = routines.map((r, i) =>
-    `<div class="routine-item"><span>${esc(r.text ?? r)}</span><button class="del" onclick="delRoutine(${i})">×</button></div>`
-  ).join('') || '<p style="color:#9ca3af;font-size:13px;">아직 루틴이 없습니다.</p>';
+  document.getElementById('routine-list').innerHTML = routines.map((r, i) => {
+    let badge = repeatLabel(r) + ' · ' + (r.startFrom === 'all_past' ? '전체 기간' : '이번 달부터');
+    if (r.endType === 'count') badge += ` · ${r.endCount}회`;
+    else if (r.endType === 'date' && r.endDate) badge += ` · ~${r.endDate}`;
+    return `<div class="routine-item">
+      <div><div>${esc(r.text ?? r)}</div><div class="routine-badge">${badge}</div></div>
+      <button class="del" onclick="delRoutine(${i})">×</button>
+    </div>`;
+  }).join('') || '<p style="color:#9ca3af;font-size:13px;">아직 루틴이 없습니다.</p>';
 }
 
 function addRoutine() {
   const inp = document.getElementById('routine-input');
   const text = inp.value.trim();
   if (!text) return;
+  const repeat = document.getElementById('routine-repeat').value;
+  const startFrom = document.getElementById('routine-start').value;
+  const endType = document.getElementById('routine-end-type').value;
+  let days = [], day = 1, yearMonth = 1, yearDay = 1, endCount = null, endDate = null;
+  if (repeat === 'weekly') {
+    days = [...document.querySelectorAll('.repeat-day-cb:checked')].map(cb => +cb.value);
+    if (!days.length) { alert('요일을 선택해주세요.'); return; }
+  }
+  if (repeat === 'monthly') day = +document.getElementById('routine-day').value;
+  if (repeat === 'yearly') {
+    yearMonth = +document.getElementById('routine-year-month').value;
+    yearDay = +document.getElementById('routine-year-day').value;
+  }
+  if (endType === 'count') endCount = +document.getElementById('routine-end-count').value;
+  if (endType === 'date') { endDate = document.getElementById('routine-end-date').value; if (!endDate) { alert('종료 날짜를 선택해주세요.'); return; } }
+
+  const routine = { text, repeat, days, day, yearMonth, yearDay, startFrom, endType, endCount, endDate, createdAt: TODAY };
   const routines = load('routines', []);
-  routines.push({ text, createdAt: TODAY });
+  routines.push(routine);
   save('routines', routines);
-  const todayTodos = getTodos(TODAY);
-  todayTodos.push({ text, done: false, routine: true });
-  saveTodos(TODAY, todayTodos);
+
+  // Apply to already-visited dates
+  const all = load('todos', {});
+  for (const date in all) {
+    if (!routineApplies(routine, date)) continue;
+    if (!all[date].some(t => t.routine && t.text === text))
+      all[date].push({ text, done: false, routine: true });
+  }
+  save('todos', all);
+
   inp.value = '';
   renderRoutines();
+  renderTodos();
+}
+
+function updateRepeatUI() {
+  const v = document.getElementById('routine-repeat').value;
+  document.getElementById('repeat-weekly').style.display = v === 'weekly' ? 'flex' : 'none';
+  document.getElementById('repeat-monthly').style.display = v === 'monthly' ? '' : 'none';
+  document.getElementById('repeat-yearly').style.display = v === 'yearly' ? '' : 'none';
+}
+
+function updateEndUI() {
+  const v = document.getElementById('routine-end-type').value;
+  document.getElementById('end-count').style.display = v === 'count' ? '' : 'none';
+  document.getElementById('end-date').style.display = v === 'date' ? '' : 'none';
 }
 
 function delRoutine(i) {
@@ -297,13 +481,38 @@ function delRoutine(i) {
   renderTodos();
 }
 
+function resetRoutineForm() {
+  document.getElementById('routine-input').value = '';
+  document.getElementById('routine-repeat').value = 'daily';
+  document.getElementById('routine-start').value = 'this_month';
+  document.getElementById('routine-end-type').value = 'none';
+  document.getElementById('routine-end-count').value = 10;
+  document.getElementById('routine-end-date').value = '';
+  document.getElementById('routine-day').value = 1;
+  document.getElementById('routine-year-month').value = 1;
+  document.getElementById('routine-year-day').value = 1;
+  document.querySelectorAll('.repeat-day-cb').forEach(cb => cb.checked = false);
+  updateRepeatUI();
+  updateEndUI();
+}
+
 function showRoutines() {
   document.getElementById('main-view').style.display = 'none';
   document.getElementById('routine-view').style.display = 'block';
   document.getElementById('routine-btn').style.display = 'none';
   document.getElementById('back-btn').style.display = '';
+  document.getElementById('today-btn').style.display = 'none';
   document.getElementById('header-title').textContent = '루틴 관리';
+  resetRoutineForm();
   renderRoutines();
+}
+
+function goToday() {
+  selectedDate = TODAY;
+  calYear = new Date().getFullYear();
+  calMonth = new Date().getMonth();
+  calMode = 'day';
+  showMain();
 }
 
 function showMain() {
@@ -311,6 +520,7 @@ function showMain() {
   document.getElementById('routine-view').style.display = 'none';
   document.getElementById('routine-btn').style.display = '';
   document.getElementById('back-btn').style.display = 'none';
+  document.getElementById('today-btn').style.display = '';
   document.getElementById('header-title').textContent = '오늘의 할 일';
   renderTodos();
 }
@@ -354,6 +564,7 @@ function renderCal() {
   picker.style.display = 'none';
 
   const all = load('todos', {});
+  const routines = load('routines', []);
   const first = new Date(calYear, calMonth, 1);
   const startDay = first.getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
@@ -367,7 +578,8 @@ function renderCal() {
     let cls = 'cal-day';
     if (ds === TODAY) cls += ' today';
     else if (ds === selectedDate) cls += ' selected';
-    const img = tierImage(ds, all[ds]);
+    const dayTodos = all[ds] ?? routines.filter(r => routineApplies(r, ds)).map(r => ({ done: false }));
+    const img = tierImage(ds, dayTodos);
     const icon = img ? `<img class="cal-icon" src="${img}">` : '';
     html += `<div class="${cls}" onclick="selectDate('${ds}')"><span>${d}</span>${icon}</div>`;
   }
