@@ -31,6 +31,8 @@ header h1 { font-size: 14px; font-weight: normal; color: var(--dark); letter-spa
 .btn:hover { background: var(--mid-hover); }
 .btn-primary { background: var(--dark); color: var(--bg); border-color: var(--dark); }
 .btn-primary:hover { background: color-mix(in srgb, var(--dark) 80%, transparent); }
+.btn-edit { background: #7A2D3C; color: var(--bg); border-color: #7A2D3C; }
+.btn-edit:hover { background: color-mix(in srgb, #7A2D3C 80%, transparent); }
 
 main { display: flex; flex: 1; overflow: hidden; }
 
@@ -87,6 +89,10 @@ main { display: flex; flex: 1; overflow: hidden; }
 .todo-item.done label { text-decoration: line-through; }
 .todo-item .del { background: none; border: none; cursor: pointer; color: var(--mid); font-size: 16px; line-height: 1; padding: 0 2px; transition: color .12s; }
 .todo-item .del:hover { color: var(--dark); }
+.edit-btn { background: none; border: none; cursor: pointer; color: var(--mid); font-size: 13px; line-height: 1; padding: 0 2px; transition: color .12s; }
+.edit-btn:hover { color: var(--dark); }
+.todo-edit-input { flex: 1; padding: 0; border: none; border-bottom: 1px solid var(--dark); background: transparent; font-size: 14px; font-family: inherit; color: var(--dark); }
+.todo-edit-input:focus { outline: none; }
 
 /* Routine management view */
 #routine-view { display: none; flex: 1; padding: 32px 40px; overflow-y: auto; }
@@ -96,10 +102,21 @@ main { display: flex; flex: 1; overflow: hidden; }
 /* Memo view */
 #memo-view { display: none; flex: 1; padding: 32px 40px; overflow-y: auto; }
 #memo-view h2 { font-size: 20px; font-weight: normal; color: var(--dark); margin-bottom: 6px; letter-spacing: 0.2px; }
-#memo-view .memo-date { font-size: 12px; color: var(--dark); opacity: 0.45; margin-bottom: 28px; }
-.memo-textarea { width: 100%; min-height: 320px; border: none; border-bottom: 1px solid var(--mid); background: transparent; font-size: 14px; font-family: inherit; color: var(--dark); resize: vertical; line-height: 1.9; padding: 8px 0; }
-.memo-textarea:focus { outline: none; border-bottom-color: var(--dark); }
-.memo-textarea::placeholder { color: var(--dark); opacity: 0.3; }
+#memo-view > p { font-size: 12px; color: var(--dark); opacity: 0.45; margin-bottom: 28px; line-height: 1.7; }
+.memo-item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--mid-hover); }
+.memo-item-body { flex: 1; }
+.memo-item-date { font-size: 10px; color: var(--dark); opacity: 0.4; letter-spacing: 0.4px; margin-bottom: 5px; }
+.memo-item-title { font-size: 14px; color: var(--dark); font-weight: bold; margin-bottom: 4px; letter-spacing: 0.2px; }
+.memo-edit-title { width: 100%; border: none; border-bottom: 1px solid var(--mid); background: transparent; font-size: 14px; font-family: inherit; color: var(--dark); padding: 4px 0; font-weight: bold; }
+.memo-edit-title:focus { outline: none; border-bottom-color: var(--dark); }
+.memo-edit-title::placeholder { color: var(--dark); opacity: 0.3; font-weight: normal; }
+.memo-item-text { font-size: 13px; color: var(--dark); opacity: 0.75; line-height: 1.7; white-space: pre-wrap; font-family: inherit; }
+.memo-item .del { background: none; border: none; cursor: pointer; color: var(--mid); font-size: 16px; line-height: 1; padding: 0 2px; transition: color .12s; flex-shrink: 0; margin-top: 2px; }
+.memo-item .del:hover { color: var(--dark); }
+.memo-write-area { width: 100%; min-height: 120px; border: none; border-bottom: 1px solid var(--mid); background: transparent; font-size: 14px; font-family: inherit; color: var(--dark); resize: vertical; line-height: 1.8; padding: 8px 0; }
+.memo-write-area:focus { outline: none; border-bottom-color: var(--dark); }
+.memo-write-area::placeholder { color: var(--dark); opacity: 0.3; }
+.cal-day-dot { position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--dark); opacity: 0.5; z-index: 3; }
 .today-inline-btn { font-size: 10px; padding: 2px 7px; border: 1px solid var(--mid); background: transparent; border-radius: 3px; cursor: pointer; font-family: inherit; color: var(--dark); transition: background .12s; vertical-align: middle; }
 .today-inline-btn:hover { background: var(--mid-hover); }
 .routine-item { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--mid-hover); font-size: 15px; font-family: inherit; color: var(--dark); }
@@ -159,7 +176,7 @@ main { display: flex; flex: 1; overflow: hidden; }
       <div class="add-row" style="flex-direction:column;align-items:stretch;gap:10px;">
         <div style="display:flex;gap:8px;">
           <input type="text" id="routine-input" placeholder="루틴 할 일 추가..." onkeydown="if(event.key==='Enter'&&!event.isComposing)addRoutine()">
-          <button class="btn btn-primary" onclick="addRoutine()">추가</button>
+          <button class="btn btn-primary" id="routine-submit-btn" onclick="addRoutine()">추가</button>
         </div>
         <div class="routine-form-row">
           <span class="routine-form-label">반복 주기</span>
@@ -219,8 +236,18 @@ main { display: flex; flex: 1; overflow: hidden; }
 
     <div id="memo-view">
       <h2>메모</h2>
-      <div class="memo-date" id="memo-date"></div>
-      <textarea class="memo-textarea" id="memo-textarea" placeholder="이 날의 메모를 작성하세요..." oninput="saveMemo()"></textarea>
+      <div class="add-row" id="memo-add-row">
+        <button class="btn btn-primary" onclick="showMemoForm()">+ 메모 추가</button>
+      </div>
+      <div id="memo-add-form" class="add-row" style="display:none;flex-direction:column;align-items:stretch;gap:10px;">
+        <input type="text" id="memo-title-input" placeholder="제목 (미입력 시 자동 생성)">
+        <textarea class="memo-write-area" id="memo-textarea" placeholder="메모를 작성하세요..."></textarea>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn" onclick="cancelMemoAdd()">취소</button>
+          <button class="btn btn-primary" onclick="addMemo()">저장</button>
+        </div>
+      </div>
+      <div id="memo-list"></div>
     </div>
   </div>
 </main>
@@ -253,6 +280,9 @@ let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 let calMode = 'day'; // 'day' | 'month' | 'year'
 let calYearBase = Math.floor(new Date().getFullYear() / 16) * 16;
+let editingTodoIdx = null;
+let editingRoutineIdx = null;
+let editingMemoIdx = null;
 
 const NS = 'paper-todo:';
 const load = (k, def) => { try { return JSON.parse(localStorage.getItem(NS + k)) ?? def; } catch { return def; } };
@@ -376,10 +406,19 @@ function renderTodos() {
         <input type="checkbox" id="c${i}" ${t.done?'checked':''} onchange="toggle(${i})">
         <label for="c${i}">${esc(t.text)}</label>
       </div>`;
+    } else if (editingTodoIdx === i) {
+      customHtml += `<div class="todo-item">
+        <input type="checkbox" id="c${i}" ${t.done?'checked':''} onchange="toggle(${i})">
+        <input type="text" class="todo-edit-input" id="todo-edit-${i}" value="${esc(t.text)}"
+          onkeydown="if(event.key==='Enter'&&!event.isComposing)saveTodoEdit(${i});else if(event.key==='Escape')cancelTodoEdit()"
+          onblur="saveTodoEdit(${i})">
+        <button class="btn" style="padding:2px 8px;font-size:11px;flex-shrink:0;" onmousedown="saveTodoEdit(${i})">완료</button>
+      </div>`;
     } else {
       customHtml += `<div class="todo-item${t.done?' done':''}">
         <input type="checkbox" id="c${i}" ${t.done?'checked':''} onchange="toggle(${i})">
         <label for="c${i}">${esc(t.text)}</label>
+        <button class="edit-btn" onclick="startTodoEdit(${i})">✎</button>
         <button class="del" onclick="del(${i})">×</button>
       </div>`;
     }
@@ -422,6 +461,31 @@ function del(i) {
   renderTodos();
 }
 
+function startTodoEdit(i) {
+  editingTodoIdx = i;
+  renderTodos();
+  setTimeout(() => document.getElementById(`todo-edit-${i}`)?.focus(), 0);
+}
+
+function saveTodoEdit(i) {
+  if (editingTodoIdx !== i) return;
+  const inp = document.getElementById(`todo-edit-${i}`);
+  if (!inp) return;
+  const text = inp.value.trim();
+  if (text) {
+    const todos = getTodos(selectedDate);
+    todos[i].text = text;
+    saveTodos(selectedDate, todos);
+  }
+  editingTodoIdx = null;
+  renderTodos();
+}
+
+function cancelTodoEdit() {
+  editingTodoIdx = null;
+  renderTodos();
+}
+
 function renderRoutines() {
   const routines = load('routines', []);
   document.getElementById('routine-list').innerHTML = routines.map((r, i) => {
@@ -430,7 +494,10 @@ function renderRoutines() {
     else if (r.endType === 'date' && r.endDate) badge += ` · ~${r.endDate}`;
     return `<div class="routine-item">
       <div><div>${esc(r.text ?? r)}</div><div class="routine-badge">${badge}</div></div>
-      <button class="del" onclick="delRoutine(${i})">×</button>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="edit-btn" onclick="startRoutineEdit(${i})">✎</button>
+        <button class="del" onclick="delRoutine(${i})">×</button>
+      </div>
     </div>`;
   }).join('') || '<p style="color:#9ca3af;font-size:13px;">아직 루틴이 없습니다.</p>';
 }
@@ -455,23 +522,59 @@ function addRoutine() {
   if (endType === 'count') endCount = +document.getElementById('routine-end-count').value;
   if (endType === 'date') { endDate = document.getElementById('routine-end-date').value; if (!endDate) { alert('종료 날짜를 선택해주세요.'); return; } }
 
-  const routine = { text, repeat, days, day, yearMonth, yearDay, startFrom, endType, endCount, endDate, createdAt: TODAY };
   const routines = load('routines', []);
-  routines.push(routine);
-  save('routines', routines);
-
-  // Apply to already-visited dates
   const all = load('todos', {});
-  for (const date in all) {
-    if (!routineApplies(routine, date)) continue;
-    if (!all[date].some(t => t.routine && t.text === text))
-      all[date].push({ text, done: false, routine: true });
+
+  if (editingRoutineIdx !== null) {
+    const oldText = routines[editingRoutineIdx].text ?? routines[editingRoutineIdx];
+    const routine = { text, repeat, days, day, yearMonth, yearDay, startFrom, endType, endCount, endDate, createdAt: routines[editingRoutineIdx].createdAt ?? TODAY };
+    routines[editingRoutineIdx] = routine;
+    save('routines', routines);
+    for (const date in all) {
+      all[date] = all[date].filter(t => !(t.routine && t.text === oldText));
+      if (routineApplies(routine, date)) all[date].push({ text, done: false, routine: true });
+    }
+    editingRoutineIdx = null;
+    const sb = document.getElementById('routine-submit-btn');
+    sb.textContent = '추가';
+    sb.classList.replace('btn-edit', 'btn-primary');
+  } else {
+    const routine = { text, repeat, days, day, yearMonth, yearDay, startFrom, endType, endCount, endDate, createdAt: TODAY };
+    routines.push(routine);
+    save('routines', routines);
+    for (const date in all) {
+      if (!routineApplies(routine, date)) continue;
+      if (!all[date].some(t => t.routine && t.text === text))
+        all[date].push({ text, done: false, routine: true });
+    }
   }
   save('todos', all);
 
   inp.value = '';
   renderRoutines();
   renderTodos();
+}
+
+function startRoutineEdit(i) {
+  editingRoutineIdx = i;
+  const r = load('routines', [])[i];
+  document.getElementById('routine-input').value = r.text ?? r;
+  document.getElementById('routine-repeat').value = r.repeat ?? 'daily';
+  document.getElementById('routine-start').value = r.startFrom ?? 'this_month';
+  document.getElementById('routine-end-type').value = r.endType ?? 'none';
+  document.getElementById('routine-end-count').value = r.endCount ?? 10;
+  document.getElementById('routine-end-date').value = r.endDate ?? '';
+  document.getElementById('routine-day').value = r.day ?? 1;
+  document.getElementById('routine-year-month').value = r.yearMonth ?? 1;
+  document.getElementById('routine-year-day').value = r.yearDay ?? 1;
+  document.querySelectorAll('.repeat-day-cb').forEach(cb => { cb.checked = (r.days ?? []).includes(+cb.value); });
+  updateRepeatUI();
+  updateEndUI();
+  const submitBtn = document.getElementById('routine-submit-btn');
+  submitBtn.textContent = '수정';
+  submitBtn.classList.replace('btn-primary', 'btn-edit');
+  document.getElementById('routine-view').scrollTop = 0;
+  document.getElementById('routine-input').focus();
 }
 
 function updateRepeatUI() {
@@ -488,6 +591,8 @@ function updateEndUI() {
 }
 
 function delRoutine(i) {
+  if (editingRoutineIdx === i) resetRoutineForm();
+  else if (editingRoutineIdx > i) editingRoutineIdx--;
   const routines = load('routines', []);
   const deletedText = routines[i].text ?? routines[i];
   routines.splice(i, 1);
@@ -502,6 +607,10 @@ function delRoutine(i) {
 }
 
 function resetRoutineForm() {
+  editingRoutineIdx = null;
+  const submitBtn = document.getElementById('routine-submit-btn');
+  submitBtn.textContent = '추가';
+  submitBtn.classList.replace('btn-edit', 'btn-primary');
   document.getElementById('routine-input').value = '';
   document.getElementById('routine-repeat').value = 'daily';
   document.getElementById('routine-start').value = 'this_month';
@@ -537,22 +646,116 @@ function showMemo() {
   document.getElementById('back-btn').style.display = '';
   document.getElementById('header-title').textContent = '메모';
   renderMemo();
+  cancelMemoAdd();
+}
+
+function getMemos() {
+  const m = load('memos', []);
+  return Array.isArray(m) ? m : [];
 }
 
 function renderMemo() {
-  const d = new Date(selectedDate + 'T00:00:00');
-  document.getElementById('memo-date').textContent =
-    d.toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
-  const memos = load('memos', {});
-  document.getElementById('memo-textarea').value = memos[selectedDate] ?? '';
+  const memos = getMemos();
+  document.getElementById('memo-list').innerHTML = memos.map((m, i) => {
+    const d = new Date((m.createdAt ?? TODAY) + 'T00:00:00');
+    const dateLabel = d.toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'short' });
+    if (editingMemoIdx === i) {
+      return `<div class="memo-item" style="flex-direction:column;align-items:stretch;gap:10px;">
+        <input type="text" class="memo-edit-title" id="memo-edit-title-${i}" value="${esc(m.title ?? '')}" placeholder="제목">
+        <textarea class="memo-write-area" id="memo-edit-text-${i}">${esc(m.text)}</textarea>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn" onmousedown="cancelMemoEdit()">취소</button>
+          <button class="btn btn-primary" onmousedown="saveMemoEdit(${i})">저장</button>
+        </div>
+      </div>`;
+    }
+    return `<div class="memo-item">
+      <div class="memo-item-body">
+        <div class="memo-item-date">${dateLabel}</div>
+        <div class="memo-item-title">${esc(m.title ?? 'memo')}</div>
+        <div class="memo-item-text">${esc(m.text)}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;margin-top:2px;">
+        <button class="edit-btn" onclick="startMemoEdit(${i})">✎</button>
+        <button class="del" onclick="delMemo(${i})">×</button>
+      </div>
+    </div>`;
+  }).join('') || '<p style="color:#9ca3af;font-size:13px;">아직 메모가 없습니다.</p>';
 }
 
-function saveMemo() {
-  const memos = load('memos', {});
-  const text = document.getElementById('memo-textarea').value;
-  if (text) memos[selectedDate] = text;
-  else delete memos[selectedDate];
+function showMemoForm() {
+  document.getElementById('memo-add-row').style.display = 'none';
+  document.getElementById('memo-add-form').style.display = 'flex';
+  document.getElementById('memo-textarea').focus();
+}
+
+function cancelMemoAdd() {
+  document.getElementById('memo-add-form').style.display = 'none';
+  document.getElementById('memo-add-row').style.display = '';
+  document.getElementById('memo-title-input').value = '';
+  document.getElementById('memo-textarea').value = '';
+}
+
+function addMemo() {
+  const ta = document.getElementById('memo-textarea');
+  const text = ta.value.trim();
+  if (!text) return;
+  const rawTitle = document.getElementById('memo-title-input').value.trim();
+  let title;
+  if (rawTitle) {
+    title = rawTitle;
+  } else {
+    const n = load('memo-counter', 0) + 1;
+    save('memo-counter', n);
+    title = `memo${n}`;
+  }
+  const memos = getMemos();
+  memos.unshift({ title, text, createdAt: TODAY });
   save('memos', memos);
+  cancelMemoAdd();
+  renderMemo();
+  renderCal();
+}
+
+function delMemo(i) {
+  if (editingMemoIdx === i) editingMemoIdx = null;
+  else if (editingMemoIdx > i) editingMemoIdx--;
+  const memos = getMemos();
+  if (/^memo\d+$/.test(memos[i]?.title ?? '')) {
+    const n = load('memo-counter', 0);
+    if (n > 0) save('memo-counter', n - 1);
+  }
+  memos.splice(i, 1);
+  save('memos', memos);
+  renderMemo();
+  renderCal();
+}
+
+function startMemoEdit(i) {
+  cancelMemoAdd();
+  editingMemoIdx = i;
+  renderMemo();
+  setTimeout(() => document.getElementById(`memo-edit-title-${i}`)?.focus(), 0);
+}
+
+function saveMemoEdit(i) {
+  const titleEl = document.getElementById(`memo-edit-title-${i}`);
+  const textEl = document.getElementById(`memo-edit-text-${i}`);
+  if (!textEl) return;
+  const text = textEl.value.trim();
+  if (text) {
+    const memos = getMemos();
+    memos[i].title = titleEl.value.trim() || memos[i].title;
+    memos[i].text = text;
+    save('memos', memos);
+  }
+  editingMemoIdx = null;
+  renderMemo();
+}
+
+function cancelMemoEdit() {
+  editingMemoIdx = null;
+  renderMemo();
 }
 
 function goToday() {
@@ -614,6 +817,7 @@ function renderCal() {
 
   const all = load('todos', {});
   const routines = load('routines', []);
+  const memoDates = new Set(getMemos().map(m => m.createdAt));
   const first = new Date(calYear, calMonth, 1);
   const startDay = first.getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
@@ -630,7 +834,8 @@ function renderCal() {
     const dayTodos = all[ds] ?? routines.filter(r => routineApplies(r, ds)).map(r => ({ done: false }));
     const img = tierImage(ds, dayTodos);
     const icon = img ? `<img class="cal-icon" src="${img}">` : '';
-    html += `<div class="${cls}" onclick="selectDate('${ds}')"><span>${d}</span>${icon}</div>`;
+    const dot = memoDates.has(ds) ? '<div class="cal-day-dot"></div>' : '';
+    html += `<div class="${cls}" onclick="selectDate('${ds}')"><span>${d}</span>${icon}${dot}</div>`;
   }
   grid.innerHTML = html;
 }
