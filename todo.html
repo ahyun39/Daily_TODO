@@ -92,6 +92,16 @@ main { display: flex; flex: 1; overflow: hidden; }
 #routine-view { display: none; flex: 1; padding: 32px 40px; overflow-y: auto; }
 #routine-view h2 { font-size: 20px; font-weight: normal; color: var(--dark); margin-bottom: 6px; letter-spacing: 0.2px; }
 #routine-view p { font-size: 12px; color: var(--dark); opacity: 0.45; margin-bottom: 28px; line-height: 1.7; }
+
+/* Memo view */
+#memo-view { display: none; flex: 1; padding: 32px 40px; overflow-y: auto; }
+#memo-view h2 { font-size: 20px; font-weight: normal; color: var(--dark); margin-bottom: 6px; letter-spacing: 0.2px; }
+#memo-view .memo-date { font-size: 12px; color: var(--dark); opacity: 0.45; margin-bottom: 28px; }
+.memo-textarea { width: 100%; min-height: 320px; border: none; border-bottom: 1px solid var(--mid); background: transparent; font-size: 14px; font-family: inherit; color: var(--dark); resize: vertical; line-height: 1.9; padding: 8px 0; }
+.memo-textarea:focus { outline: none; border-bottom-color: var(--dark); }
+.memo-textarea::placeholder { color: var(--dark); opacity: 0.3; }
+.today-inline-btn { font-size: 10px; padding: 2px 7px; border: 1px solid var(--mid); background: transparent; border-radius: 3px; cursor: pointer; font-family: inherit; color: var(--dark); transition: background .12s; vertical-align: middle; }
+.today-inline-btn:hover { background: var(--mid-hover); }
 .routine-item { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--mid-hover); font-size: 15px; font-family: inherit; color: var(--dark); }
 .routine-item .del { background: none; border: none; cursor: pointer; color: var(--mid); font-size: 16px; transition: color .12s; }
 .routine-item .del:hover { color: var(--dark); }
@@ -108,10 +118,9 @@ main { display: flex; flex: 1; overflow: hidden; }
 <header>
   <h1 id="header-title">오늘의 할 일</h1>
   <div style="display:flex;gap:8px;">
-    <button class="btn" id="today-btn" onclick="goToday()">오늘</button>
+    <button class="btn" id="memo-btn" onclick="showMemo()">메모</button>
     <button class="btn" id="routine-btn" onclick="showRoutines()">루틴 관리</button>
     <button class="btn" id="back-btn" onclick="showMain()" style="display:none">← 돌아가기</button>
-
   </div>
 </header>
 
@@ -132,7 +141,10 @@ main { display: flex; flex: 1; overflow: hidden; }
 
   <div class="content-area">
     <div id="main-view">
-      <div class="todo-date" id="todo-date"></div>
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px;">
+        <div class="todo-date" id="todo-date"></div>
+        <button class="today-inline-btn" id="today-inline-btn" onclick="goToday()" style="display:none">오늘</button>
+      </div>
       <div class="todo-progress" id="todo-progress"></div>
       <div class="add-row">
         <input type="text" id="todo-input" placeholder="할 일 추가..." onkeydown="if(event.key==='Enter'&&!event.isComposing)addTodo()">
@@ -203,6 +215,12 @@ main { display: flex; flex: 1; overflow: hidden; }
         </div>
       </div>
       <div id="routine-list"></div>
+    </div>
+
+    <div id="memo-view">
+      <h2>메모</h2>
+      <div class="memo-date" id="memo-date"></div>
+      <textarea class="memo-textarea" id="memo-textarea" placeholder="이 날의 메모를 작성하세요..." oninput="saveMemo()"></textarea>
     </div>
   </div>
 </main>
@@ -343,6 +361,8 @@ function renderTodos() {
   const d = new Date(selectedDate + 'T00:00:00');
   document.getElementById('todo-date').textContent =
     d.toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
+
+  document.getElementById('today-inline-btn').style.display = selectedDate !== TODAY ? '' : 'none';
 
   const done = todos.filter(t => t.done).length;
   const total = todos.length;
@@ -499,12 +519,40 @@ function resetRoutineForm() {
 function showRoutines() {
   document.getElementById('main-view').style.display = 'none';
   document.getElementById('routine-view').style.display = 'block';
+  document.getElementById('memo-view').style.display = 'none';
   document.getElementById('routine-btn').style.display = 'none';
+  document.getElementById('memo-btn').style.display = 'none';
   document.getElementById('back-btn').style.display = '';
-  document.getElementById('today-btn').style.display = 'none';
   document.getElementById('header-title').textContent = '루틴 관리';
   resetRoutineForm();
   renderRoutines();
+}
+
+function showMemo() {
+  document.getElementById('main-view').style.display = 'none';
+  document.getElementById('routine-view').style.display = 'none';
+  document.getElementById('memo-view').style.display = 'block';
+  document.getElementById('routine-btn').style.display = 'none';
+  document.getElementById('memo-btn').style.display = 'none';
+  document.getElementById('back-btn').style.display = '';
+  document.getElementById('header-title').textContent = '메모';
+  renderMemo();
+}
+
+function renderMemo() {
+  const d = new Date(selectedDate + 'T00:00:00');
+  document.getElementById('memo-date').textContent =
+    d.toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
+  const memos = load('memos', {});
+  document.getElementById('memo-textarea').value = memos[selectedDate] ?? '';
+}
+
+function saveMemo() {
+  const memos = load('memos', {});
+  const text = document.getElementById('memo-textarea').value;
+  if (text) memos[selectedDate] = text;
+  else delete memos[selectedDate];
+  save('memos', memos);
 }
 
 function goToday() {
@@ -518,9 +566,10 @@ function goToday() {
 function showMain() {
   document.getElementById('main-view').style.display = '';
   document.getElementById('routine-view').style.display = 'none';
+  document.getElementById('memo-view').style.display = 'none';
   document.getElementById('routine-btn').style.display = '';
+  document.getElementById('memo-btn').style.display = '';
   document.getElementById('back-btn').style.display = 'none';
-  document.getElementById('today-btn').style.display = '';
   document.getElementById('header-title').textContent = '오늘의 할 일';
   renderTodos();
 }
