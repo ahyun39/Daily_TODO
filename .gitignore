@@ -11,6 +11,3 @@ com.user.todo.plist
 
 # macOS 시스템 파일
 .DS_Store
-
-# image files
-images_md

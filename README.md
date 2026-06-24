@@ -19,9 +19,14 @@
 ### 방법 2 — GitHub Pages
 
 ```python
-# https://ahyun39.github.io/Daily_TODO/todo.html
 https://[username].github.io/Daily_TODO/todo.html
 ```
+
+(실행할 때 아래 링크처럼 username 채운 링크로 접속)
+```python
+https://ahyun39.github.io/Daily_TODO/todo.html
+```
+
 
 ---
 
