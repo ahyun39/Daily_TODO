@@ -2,7 +2,7 @@
 
 심플한 데일리 투두 프로그램입니다.
 
-![메인화면](/Users/kangahhyun/Daily_TODO/images_md/메인화면.png)
+<img width="2089" height="1517" alt="Image" src="https://github.com/user-attachments/assets/bf741278-c2fd-4216-8ab3-3014297af51c" />
 
 매일 일정한 시간에 프로그램이 실행되도록 설정할 수 있습니다. (아래 설명 참고))
 
